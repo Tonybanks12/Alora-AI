@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Alora AI Usage Dashboard - Admin Only</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Outfit',sans-serif;background:#0a0e13;color:#e6edf3;padding:20px}
+.container{max-width:1200px;margin:0 auto}
+h1{font-size:2rem;margin-bottom:10px;background:linear-gradient(135deg,#ff6b6b 0%,#ff8e53 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin:20px 0}
+.stat-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:20px;text-align:center}
+.stat-value{font-size:2.5rem;font-weight:800;margin:10px 0}
+.stat-label{color:#7c8a9e;font-size:.9rem;text-transform:uppercase;letter-spacing:1px}
+.green{color:#3fb950}
+.red{color:#da3633}
+.yellow{color:#d29922}
+.users-table{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:20px;margin-top:20px;overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:12px;border-bottom:2px solid rgba(255,255,255,.1);color:#7c8a9e;font-weight:600;font-size:.85rem;text-transform:uppercase}
+td{padding:12px;border-bottom:1px solid rgba(255,255,255,.05)}
+tr:hover{background:rgba(255,255,255,.02)}
+.progress-bar{height:8px;background:rgba(0,0,0,.3);border-radius:4px;overflow:hidden;margin-top:5px}
+.progress-fill{height:100%;background:linear-gradient(90deg,#3fb950,#d29922,#da3633);transition:width .3s ease}
+.btn{background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.3);color:#ff6b6b;padding:10px 20px;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:600;font-size:.9rem;margin:10px 5px}
+.btn:hover{background:rgba(255,107,107,.2)}
+.emergency{background:rgba(218,54,51,.2);border-color:#da3633;color:#fff}
+.emergency:hover{background:rgba(218,54,51,.3)}
+.auth-box{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:40px;max-width:400px;margin:100px auto;text-align:center}
+.auth-box input{width:100%;padding:12px;margin:10px 0;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.3);color:#fff;border-radius:8px;font-family:inherit;font-size:1rem}
+.error{color:#da3633;margin:10px 0;font-size:.9rem}
+.last-update{color:#7c8a9e;font-size:.8rem;margin:20px 0}
+</style>
+</head>
+<body>
+
+<div id="authScreen" class="auth-box">
+<h1>🔐 Admin Access Required</h1>
+<p style="color:#7c8a9e;margin:20px 0">Enter your admin key to view usage dashboard</p>
+<input type="password" id="adminKeyInput" placeholder="Admin Key">
+<div class="error" id="authError"></div>
+<button class="btn" onclick="authenticate()">Access Dashboard</button>
+</div>
+
+<div id="dashboard" style="display:none">
+<div class="container">
+<h1>🏗️ Alora AI Usage Dashboard</h1>
+<p style="color:#7c8a9e;margin-bottom:20px">Real-time cost tracking and rate limit monitoring</p>
+
+<div class="stats">
+<div class="stat-card">
+<div class="stat-label">Daily Cost</div>
+<div class="stat-value" id="dailyCost">$0.00</div>
+<div class="progress-bar">
+<div class="progress-fill" id="costProgress" style="width:0%"></div>
+</div>
+</div>
+
+<div class="stat-card">
+<div class="stat-label">Budget Remaining</div>
+<div class="stat-value" id="budgetRemaining">$0.00</div>
+</div>
+
+<div class="stat-card">
+<div class="stat-label">Total Requests Today</div>
+<div class="stat-value" id="totalRequests">0</div>
+</div>
+
+<div class="stat-card">
+<div class="stat-label">Active Users</div>
+<div class="stat-value" id="activeUsers">0</div>
+</div>
+</div>
+
+<div class="last-update">Last updated: <span id="lastUpdate">Never</span></div>
+
+<div style="text-align:center;margin:20px 0">
+<button class="btn" onclick="refreshData()">🔄 Refresh Data</button>
+<button class="btn emergency" onclick="emergencyStop()">🚨 Emergency Stop AI</button>
+</div>
+
+<div class="users-table">
+<h2 style="margin-bottom:20px">👥 User Breakdown</h2>
+<table id="usersTable">
+<thead>
+<tr>
+<th>User Email</th>
+<th>Requests</th>
+<th>Daily Limit</th>
+<th>Remaining</th>
+<th>Cost Today</th>
+<th>Usage %</th>
+</tr>
+</thead>
+<tbody id="usersBody">
+<tr><td colspan="6" style="text-align:center;color:#7c8a9e">Loading...</td></tr>
+</tbody>
+</table>
+</div>
+
+</div>
+</div>
+
+<script>
+let adminKey = '';
+
+function authenticate() {
+  const key = document.getElementById('adminKeyInput').value;
+  if (!key) {
+    document.getElementById('authError').textContent = 'Please enter admin key';
+    return;
+  }
+  adminKey = key;
+  refreshData();
+}
+
+async function refreshData() {
+  try {
+    const resp = await fetch('/api/usage', {
+      headers: { 'x-admin-key': adminKey }
+    });
+    
+    if (resp.status === 403) {
+      document.getElementById('authError').textContent = 'Invalid admin key';
+      document.getElementById('dashboard').style.display = 'none';
+      document.getElementById('authScreen').style.display = 'block';
+      return;
+    }
+    
+    if (!resp.ok) throw new Error('Failed to fetch usage data');
+    
+    const data = await resp.json();
+    
+    // Hide auth, show dashboard
+    document.getElementById('authScreen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    
+    // Update summary stats
+    const dailyCost = data.totalDailyCost || 0;
+    const budgetLimit = data.budgetLimit || 50;
+    const budgetRemaining = data.budgetRemaining || 0;
+    const totalRequests = data.users.reduce((sum, u) => sum + u.requests, 0);
+    
+    document.getElementById('dailyCost').textContent = '$' + dailyCost.toFixed(2);
+    document.getElementById('budgetRemaining').textContent = '$' + budgetRemaining.toFixed(2);
+    document.getElementById('totalRequests').textContent = totalRequests;
+    document.getElementById('activeUsers').textContent = data.users.length;
+    
+    // Update progress bar
+    const costPercent = Math.min(100, (dailyCost / budgetLimit) * 100);
+    document.getElementById('costProgress').style.width = costPercent + '%';
+    
+    // Color code based on budget usage
+    const costEl = document.getElementById('dailyCost');
+    costEl.className = 'stat-value ' + (costPercent > 80 ? 'red' : costPercent > 50 ? 'yellow' : 'green');
+    
+    // Update users table
+    const tbody = document.getElementById('usersBody');
+    if (data.users.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#7c8a9e">No usage today</td></tr>';
+    } else {
+      tbody.innerHTML = data.users.map(u => {
+        const usagePercent = ((u.requests / u.limit) * 100).toFixed(0);
+        const progressColor = usagePercent > 80 ? '#da3633' : usagePercent > 50 ? '#d29922' : '#3fb950';
+        return `
+          <tr>
+            <td>${u.email}</td>
+            <td>${u.requests}</td>
+            <td>${u.limit}</td>
+            <td>${u.remaining}</td>
+            <td>$${(u.cost || 0).toFixed(4)}</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span>${usagePercent}%</span>
+                <div style="flex:1;height:6px;background:rgba(0,0,0,.3);border-radius:3px;overflow:hidden">
+                  <div style="width:${usagePercent}%;height:100%;background:${progressColor}"></div>
+                </div>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+    
+    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+    
+  } catch (err) {
+    console.error('Error fetching usage:', err);
+    alert('Failed to load usage data: ' + err.message);
+  }
+}
+
+async function emergencyStop() {
+  if (!confirm('⚠️ This will DISABLE all AI features immediately. Server restart required to re-enable. Continue?')) {
+    return;
+  }
+  
+  try {
+    const resp = await fetch('/api/emergency-stop', {
+      headers: { 'x-admin-key': adminKey }
+    });
+    const data = await resp.json();
+    alert(data.message);
+    refreshData();
+  } catch (err) {
+    alert('Failed to disable AI: ' + err.message);
+  }
+}
+
+// Auto-refresh every 30 seconds when dashboard is visible
+setInterval(() => {
+  if (document.getElementById('dashboard').style.display !== 'none') {
+    refreshData();
+  }
+}, 30000);
+</script>
+
+</body>
+</html>
