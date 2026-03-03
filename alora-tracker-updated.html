@@ -1,0 +1,2494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a2e">
+    <title>Alora Property Tracker</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS - FREE map library -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --primary: #667eea;
+            --primary-dark: #5a67d8;
+            --secondary: #764ba2;
+            --success: #2ed573;
+            --warning: #ffc107;
+            --danger: #e74c3c;
+            --info: #1e90ff;
+            --orange: #ff6b35;
+            --bg-dark: #0f0f1a;
+            --bg-card: #1a1a2e;
+            --bg-elevated: #252542;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --border: #2a2a4a;
+            --shadow: rgba(0,0,0,0.4);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        /* ===== LOGIN SCREEN ===== */
+        .login-screen {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #1a1a3e 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            transition: opacity 0.5s, visibility 0.5s;
+        }
+        .login-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+        }
+        .login-logo {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .login-logo h1 {
+            font-size: 42px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -1px;
+        }
+        .login-logo p {
+            color: var(--text-secondary);
+            margin-top: 8px;
+            font-size: 14px;
+        }
+        .login-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 40px 30px;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 60px var(--shadow);
+        }
+        .login-tabs {
+            display: flex;
+            margin-bottom: 30px;
+            background: var(--bg-elevated);
+            border-radius: 12px;
+            padding: 4px;
+        }
+        .login-tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-secondary);
+            transition: all 0.3s;
+        }
+        .login-tab.active {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+        }
+        .login-form {
+            display: none;
+        }
+        .login-form.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 14px 16px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+        .form-group input::placeholder {
+            color: var(--text-secondary);
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .login-error {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .login-error.show {
+            display: block;
+        }
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 25px 0;
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+        .divider span {
+            padding: 0 15px;
+        }
+        .social-login {
+            display: flex;
+            gap: 12px;
+        }
+        .social-btn {
+            flex: 1;
+            padding: 14px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: transparent;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+        .social-btn:hover {
+            background: var(--bg-elevated);
+            border-color: var(--primary);
+        }
+        
+        /* ===== MAIN APP ===== */
+        .app-container {
+            display: none;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .app-container.active {
+            display: flex;
+        }
+        
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            padding: 15px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+        }
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .header-brand h1 {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        .header-brand small {
+            font-size: 11px;
+            opacity: 0.8;
+        }
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .header-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.3s;
+        }
+        .header-btn:hover {
+            background: rgba(255,255,255,0.25);
+            transform: scale(1.05);
+        }
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        /* Stats Row */
+        .stats-row {
+            display: flex;
+            gap: 10px;
+            padding: 12px 20px;
+            overflow-x: auto;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+        }
+        .stat-chip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 12px;
+            background: var(--bg-elevated);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .stat-chip .stat-num {
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .stat-chip .stat-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+        .stat-chip.total { border-left: 3px solid var(--primary); }
+        .stat-chip.occupied { border-left: 3px solid var(--success); }
+        .stat-chip.occupied .stat-num { color: var(--success); }
+        .stat-chip.ready { border-left: 3px solid var(--info); }
+        .stat-chip.ready .stat-num { color: var(--info); }
+        .stat-chip.inprogress { border-left: 3px solid var(--orange); }
+        .stat-chip.inprogress .stat-num { color: var(--orange); }
+        .stat-chip.demo { border-left: 3px solid var(--warning); }
+        .stat-chip.demo .stat-num { color: var(--warning); }
+        .stat-chip.vacant { border-left: 3px solid #666; }
+        .stat-chip.vacant .stat-num { color: #888; }
+        
+        /* Navigation Tabs */
+        .nav-tabs {
+            display: flex;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+        }
+        .nav-tab {
+            flex: 1;
+            min-width: 100px;
+            padding: 14px 20px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+        .nav-tab:hover {
+            color: var(--text-primary);
+            background: var(--bg-elevated);
+        }
+        .nav-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .tab-content {
+            display: none;
+            flex: 1;
+        }
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Map View Selector */
+        .map-view-selector {
+            display: flex;
+            gap: 8px;
+            padding: 12px 20px;
+            background: var(--bg-elevated);
+        }
+        .map-view-btn {
+            flex: 1;
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .map-view-btn.active {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-color: transparent;
+            color: white;
+        }
+        
+        /* Map Container */
+        .map-container {
+            flex: 1;
+            position: relative;
+            min-height: 500px;
+            background: #1a2a1a;
+        }
+        #googleMap {
+            position: absolute;
+            inset: 0;
+        }
+        .blueprint-map {
+            position: absolute;
+            inset: 0;
+            overflow: auto;
+            background: linear-gradient(180deg, #2a4a2a 0%, #1e3d1e 50%, #2a4a2a 100%);
+        }
+        .map-wrapper {
+            position: relative;
+            width: 1400px;
+            height: 1000px;
+            min-width: 1400px;
+            min-height: 1000px;
+        }
+        
+        /* Roads */
+        .road {
+            position: absolute;
+            background: #555;
+            border-radius: 2px;
+        }
+        .road.main {
+            background: #666;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+        .road-label {
+            position: absolute;
+            font-size: 10px;
+            color: #aaa;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            white-space: nowrap;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+        
+        /* Lake */
+        .lake {
+            position: absolute;
+            background: linear-gradient(180deg, #2980b9 0%, #1a5276 100%);
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.3), 0 0 20px rgba(41, 128, 185, 0.3);
+            border-radius: 50%;
+        }
+        .lake-label {
+            position: absolute;
+            color: rgba(255,255,255,0.8);
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            pointer-events: none;
+        }
+        
+        /* Buildings */
+        .building {
+            position: absolute;
+            background: #e8e8e8;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            border: 2px solid transparent;
+        }
+        .building:hover {
+            transform: scale(1.15);
+            z-index: 50;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
+        }
+        .building.selected {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.3), 0 4px 15px rgba(102, 126, 234, 0.5);
+            z-index: 51;
+        }
+        .building.has-inprogress {
+            box-shadow: 0 0 8px rgba(255,107,53,0.4), 0 2px 6px rgba(0,0,0,0.3);
+        }
+        .building .b-num {
+            font-size: 8px;
+            font-weight: 700;
+            color: #333;
+            line-height: 1;
+        }
+        .building .b-mini-bar {
+            width: 85%;
+            height: 4px;
+            border-radius: 2px;
+            margin-top: 2px;
+            display: flex;
+            overflow: hidden;
+            background: #ccc;
+        }
+        .building .b-mini-bar > div { height: 100%; }
+        
+        /* Facilities */
+        .facility {
+            position: absolute;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: 600;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: transform 0.2s;
+            color: white;
+        }
+        .facility:hover {
+            transform: scale(1.1);
+            z-index: 100;
+        }
+        .facility.pool {
+            background: linear-gradient(135deg, #00cec9, #0984e3);
+        }
+        .facility.fitness {
+            background: linear-gradient(135deg, #e17055, #d63031);
+        }
+        .facility.office {
+            background: linear-gradient(135deg, #fdcb6e, #e17055);
+        }
+        .facility.pavilion {
+            background: linear-gradient(135deg, #636e72, #2d3436);
+        }
+        .facility-icon {
+            font-size: 16px;
+            margin-bottom: 2px;
+        }
+        
+        /* Status Colors */
+        .status-occ { background: var(--success); }
+        .status-rdy { background: var(--info); }
+        .status-inp { background: var(--orange); }
+        .status-dmo { background: var(--warning); }
+        .status-vac { background: #bbb; }
+        
+        /* Detail Panel */
+        .detail-panel {
+            position: fixed;
+            top: 100px;
+            right: 15px;
+            width: 320px;
+            max-height: calc(100vh - 120px);
+            background: rgba(26, 26, 46, 0.98);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: 0 15px 50px var(--shadow);
+            z-index: 200;
+            display: none;
+            overflow-y: auto;
+        }
+        .detail-panel.active { display: block; }
+        
+        .detail-header {
+            padding: 16px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .detail-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .detail-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .detail-close:hover { background: rgba(255,255,255,0.3); }
+        
+        .detail-stats {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+            padding: 12px;
+            background: rgba(0,0,0,0.2);
+        }
+        .detail-stat {
+            text-align: center;
+            padding: 8px 4px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.05);
+        }
+        .detail-stat-num {
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .detail-stat-label {
+            font-size: 8px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+        .detail-stat.occ .detail-stat-num { color: var(--success); }
+        .detail-stat.rdy .detail-stat-num { color: var(--info); }
+        .detail-stat.inp .detail-stat-num { color: var(--orange); }
+        .detail-stat.dmo .detail-stat-num { color: var(--warning); }
+        .detail-stat.vac .detail-stat-num { color: #888; }
+        
+        .detail-units {
+            padding: 15px;
+        }
+        .detail-units-title {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+        .unit-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+        }
+        .unit {
+            padding: 10px 4px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .unit:hover { transform: scale(1.08); }
+        .unit.occupied { background: var(--success); color: #000; }
+        .unit.ready { background: var(--info); color: #fff; }
+        .unit.inprogress { background: var(--orange); color: #fff; }
+        .unit.demo { background: var(--warning); color: #000; }
+        .unit.vacant { background: #444; color: #888; }
+        
+        .unit-detail {
+            margin-top: 15px;
+            padding: 12px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 8px;
+            border-left: 3px solid var(--primary);
+            display: none;
+        }
+        .unit-detail.active { display: block; }
+        .unit-detail h4 {
+            font-size: 14px;
+            margin-bottom: 8px;
+            color: var(--primary);
+        }
+        .unit-detail p {
+            font-size: 12px;
+            margin: 4px 0;
+            color: var(--text-secondary);
+        }
+        
+        /* Legend */
+        .legend {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            z-index: 100;
+        }
+        .legend-title {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            font-size: 12px;
+        }
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+        
+        /* Dashboard Tab */
+        .dashboard-content {
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .dashboard-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid var(--border);
+        }
+        .dashboard-card h3 {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .progress-ring {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
+        }
+        .ring-container {
+            position: relative;
+            width: 140px;
+            height: 140px;
+        }
+        .ring-container svg {
+            transform: rotate(-90deg);
+        }
+        .ring-bg {
+            fill: none;
+            stroke: var(--bg-elevated);
+            stroke-width: 12;
+        }
+        .ring-progress {
+            fill: none;
+            stroke: url(#progressGradient);
+            stroke-width: 12;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1s ease;
+        }
+        .ring-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        .ring-value {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--primary);
+        }
+        .ring-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .progress-target {
+            text-align: center;
+        }
+        .target-value {
+            font-size: 48px;
+            font-weight: 800;
+            color: var(--success);
+        }
+        .target-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+        .metric-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        .metric-value {
+            font-size: 18px;
+            font-weight: 700;
+        }
+        
+        /* Batch Cards */
+        .batch-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        .batch-card {
+            background: var(--bg-elevated);
+            border-radius: 12px;
+            padding: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        .batch-card h4 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .batch-card .batch-count {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--primary);
+        }
+        .batch-card .batch-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .batch-card.completed {
+            border-color: var(--success);
+        }
+        .batch-card.completed .batch-count {
+            color: var(--success);
+        }
+        .batch-card.active {
+            border-color: var(--orange);
+        }
+        .batch-card.active .batch-count {
+            color: var(--orange);
+        }
+        
+        /* Activity Log */
+        .activity-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .activity-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .activity-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: var(--bg-elevated);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        .activity-content {
+            flex: 1;
+        }
+        .activity-text {
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+        .activity-time {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+        
+        /* Search Bar */
+        .search-container {
+            padding: 15px 20px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+        }
+        .search-input {
+            width: 100%;
+            padding: 12px 16px;
+            padding-left: 44px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 14px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23666'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: 14px center;
+            background-size: 20px;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        /* Units List Tab */
+        .units-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 20px 20px;
+        }
+        .units-section {
+            margin-bottom: 20px;
+        }
+        .units-section-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: var(--bg-dark);
+        }
+        .unit-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .unit-row:hover {
+            background: var(--bg-elevated);
+            margin: 0 -10px;
+            padding: 14px 10px;
+            border-radius: 8px;
+        }
+        .unit-status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .unit-info {
+            flex: 1;
+        }
+        .unit-name {
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .unit-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .unit-badge {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .unit-badge.occupied { background: rgba(46, 213, 115, 0.15); color: var(--success); }
+        .unit-badge.ready { background: rgba(30, 144, 255, 0.15); color: var(--info); }
+        .unit-badge.inprogress { background: rgba(255, 107, 53, 0.15); color: var(--orange); }
+        .unit-badge.demo { background: rgba(255, 193, 7, 0.15); color: var(--warning); }
+        .unit-badge.vacant { background: rgba(136, 136, 136, 0.15); color: #888; }
+        
+        /* Filters */
+        .filter-row {
+            display: flex;
+            gap: 8px;
+            padding: 12px 20px;
+            overflow-x: auto;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+        }
+        .filter-btn {
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .filter-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+        
+        /* User Menu */
+        .user-menu {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            width: 260px;
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            box-shadow: 0 15px 50px var(--shadow);
+            z-index: 1000;
+            display: none;
+            overflow: hidden;
+        }
+        .user-menu.active { display: block; }
+        .user-menu-header {
+            padding: 20px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            text-align: center;
+        }
+        .user-menu-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0 auto 10px;
+        }
+        .user-menu-name {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .user-menu-email {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 4px;
+        }
+        .user-menu-items {
+            padding: 10px;
+        }
+        .user-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .user-menu-item:hover {
+            background: var(--bg-elevated);
+        }
+        .user-menu-item.danger {
+            color: var(--danger);
+        }
+        
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            padding: 14px 20px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 30px var(--shadow);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s ease;
+            max-width: 350px;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        .toast.success { border-left: 4px solid var(--success); }
+        .toast.error { border-left: 4px solid var(--danger); }
+        .toast.info { border-left: 4px solid var(--info); }
+        .toast-icon {
+            font-size: 20px;
+        }
+        .toast-message {
+            flex: 1;
+            font-size: 13px;
+        }
+        
+        /* Loading Spinner */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .stats-row {
+                padding: 10px 15px;
+            }
+            .stat-chip {
+                padding: 8px 12px;
+            }
+            .stat-chip .stat-num {
+                font-size: 16px;
+            }
+            .detail-panel {
+                left: 10px;
+                right: 10px;
+                width: auto;
+                max-height: 60vh;
+                top: auto;
+                bottom: 10px;
+            }
+            .legend {
+                display: none;
+            }
+            .dashboard-content {
+                padding: 15px;
+            }
+            .ring-container {
+                width: 100px;
+                height: 100px;
+            }
+            .ring-value {
+                font-size: 24px;
+            }
+            .target-value {
+                font-size: 32px;
+            }
+        }
+        
+        /* Leaflet Map Customizations */
+        .leaflet-popup-content-wrapper {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+        }
+        .leaflet-popup-content {
+            margin: 10px 14px;
+        }
+        .leaflet-popup-tip {
+            background: white;
+        }
+        .building-marker div:hover {
+            transform: scale(1.15) !important;
+        }
+        .leaflet-control-zoom {
+            border: none !important;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3) !important;
+        }
+        .leaflet-control-zoom a {
+            background: rgba(0,0,0,0.8) !important;
+            color: white !important;
+            border: none !important;
+        }
+        .leaflet-control-zoom a:hover {
+            background: rgba(60,60,60,0.9) !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div class="login-screen" id="loginScreen">
+        <div class="login-container">
+            <div class="login-logo">
+                <h1>ALORA</h1>
+                <p>Property Tracker • Phase 1</p>
+            </div>
+            <div class="login-card">
+                <div class="login-tabs">
+                    <div class="login-tab active" onclick="switchLoginTab('access')">Access Code</div>
+                    <div class="login-tab" onclick="switchLoginTab('email')">Email Login</div>
+                </div>
+                
+                <div id="loginError" class="login-error"></div>
+                
+                <!-- Access Code Form -->
+                <form class="login-form active" id="accessCodeForm" onsubmit="handleAccessCode(event)">
+                    <div class="form-group">
+                        <label>Access Code</label>
+                        <input type="text" id="accessCode" placeholder="Enter your access code" autocomplete="off">
+                    </div>
+                    <button type="submit" class="btn-primary" id="accessBtn">
+                        Continue
+                    </button>
+                </form>
+                
+                <!-- Email Login Form -->
+                <form class="login-form" id="emailLoginForm" onsubmit="handleEmailLogin(event)">
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="loginEmail" placeholder="you@company.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="loginPassword" placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="btn-primary" id="loginBtn">
+                        Sign In
+                    </button>
+                    <div class="divider"><span>or continue with</span></div>
+                    <div class="social-login">
+                        <button type="button" class="social-btn" onclick="handleGoogleLogin()">
+                            <svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                            Google
+                        </button>
+                        <button type="button" class="social-btn" onclick="handleAppleLogin()">
+                            <svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                            Apple
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div class="app-container" id="appContainer">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-top">
+                <div class="header-brand">
+                    <div>
+                        <h1>ALORA</h1>
+                        <small>Phase 1 • Oklahoma City</small>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="header-btn" onclick="refreshData()" title="Refresh">🔄</button>
+                    <button class="header-btn" onclick="toggleNotifications()" title="Notifications">🔔</button>
+                    <div class="user-avatar" id="userAvatar" onclick="toggleUserMenu()">AE</div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Stats Row -->
+        <div class="stats-row">
+            <div class="stat-chip total">
+                <div>
+                    <div class="stat-num" id="totalUnits">467</div>
+                    <div class="stat-label">Total</div>
+                </div>
+            </div>
+            <div class="stat-chip occupied">
+                <div>
+                    <div class="stat-num" id="occUnits">135</div>
+                    <div class="stat-label">Occupied</div>
+                </div>
+            </div>
+            <div class="stat-chip ready">
+                <div>
+                    <div class="stat-num" id="rdyUnits">54</div>
+                    <div class="stat-label">Ready</div>
+                </div>
+            </div>
+            <div class="stat-chip inprogress">
+                <div>
+                    <div class="stat-num" id="inpUnits">13</div>
+                    <div class="stat-label">In Progress</div>
+                </div>
+            </div>
+            <div class="stat-chip demo">
+                <div>
+                    <div class="stat-num" id="dmoUnits">60</div>
+                    <div class="stat-label">Demo</div>
+                </div>
+            </div>
+            <div class="stat-chip vacant">
+                <div>
+                    <div class="stat-num" id="vacUnits">205</div>
+                    <div class="stat-label">Vacant</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs">
+            <div class="nav-tab active" onclick="switchTab('map')">Map</div>
+            <div class="nav-tab" onclick="switchTab('dashboard')">Dashboard</div>
+            <div class="nav-tab" onclick="switchTab('units')">Units</div>
+            <div class="nav-tab" onclick="switchTab('batches')">Batches</div>
+            <div class="nav-tab" onclick="switchTab('activity')">Activity</div>
+        </nav>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Map Tab -->
+            <div class="tab-content active" id="tab-map">
+                <div class="map-view-selector">
+                    <button class="map-view-btn active" onclick="switchMapView('blueprint')">🗺️ Blueprint</button>
+                    <button class="map-view-btn" onclick="switchMapView('satellite')">🛰️ Satellite</button>
+                    <button class="map-view-btn" onclick="switchMapView('3d')">🏢 3D View</button>
+                </div>
+                <div class="map-container">
+                    <!-- Blueprint Map -->
+                    <div class="blueprint-map" id="blueprintMap">
+                        <div class="map-wrapper" id="mapWrapper">
+                            <!-- Roads -->
+                            <div class="road main" style="left:0; top:920px; width:1400px; height:40px;"></div>
+                            <div class="road-label" style="left:700px; top:933px; transform:translateX(-50%);">NW 63RD STREET</div>
+                            
+                            <div class="road main" style="left:500px; top:15px; width:900px; height:28px;"></div>
+                            <div class="road-label" style="left:900px; top:22px; transform:translateX(-50%);">W WOODBROOK RD</div>
+                            
+                            <div class="road main" style="left:580px; top:15px; width:22px; height:920px;"></div>
+                            <div class="road-label" style="left:545px; top:500px; transform:rotate(-90deg) translateX(-50%);">N PENIEL AVE</div>
+                            
+                            <!-- Lake -->
+                            <div class="lake" style="left:180px; top:180px; width:400px; height:350px; border-radius:50% 60% 55% 45%;"></div>
+                            <div class="lake-label" style="left:320px; top:340px; transform:translateX(-50%);">ISOLA BELLA</div>
+                            
+                            <!-- Facilities -->
+                            <div class="facility pool" style="left:60px; top:50px; width:60px; height:40px;">
+                                <span class="facility-icon">🏊</span>
+                                <span>POOL 1</span>
+                            </div>
+                            <div class="facility fitness" style="left:150px; top:50px; width:80px; height:40px;">
+                                <span class="facility-icon">💪</span>
+                                <span>FITNESS</span>
+                            </div>
+                            <div class="facility pavilion" style="left:380px; top:550px; width:70px; height:50px;">
+                                <span class="facility-icon">🏛️</span>
+                                <span>PAVILION</span>
+                            </div>
+                            <div class="facility pool" style="left:470px; top:550px; width:60px; height:40px;">
+                                <span class="facility-icon">🏊</span>
+                                <span>POOL 2</span>
+                            </div>
+                            <div class="facility office" style="left:1250px; top:850px; width:90px; height:50px;">
+                                <span class="facility-icon">🏢</span>
+                                <span>OFFICE</span>
+                            </div>
+                            
+                            <!-- Buildings will be rendered by JS -->
+                        </div>
+                    </div>
+                    
+                    <!-- Google Map (Satellite & 3D) -->
+                    <div id="googleMap" style="display:none;"></div>
+                </div>
+                
+                <!-- Legend -->
+                <div class="legend">
+                    <div class="legend-title">Status Legend</div>
+                    <div class="legend-item"><div class="legend-dot status-occ"></div> Occupied</div>
+                    <div class="legend-item"><div class="legend-dot status-rdy"></div> Ready</div>
+                    <div class="legend-item"><div class="legend-dot status-inp"></div> In Progress</div>
+                    <div class="legend-item"><div class="legend-dot status-dmo"></div> Demo</div>
+                    <div class="legend-item"><div class="legend-dot status-vac"></div> Vacant</div>
+                </div>
+                
+                <!-- Detail Panel -->
+                <div class="detail-panel" id="detailPanel">
+                    <div class="detail-header">
+                        <h3 id="detailTitle">Building 6309</h3>
+                        <button class="detail-close" onclick="closeDetail()">×</button>
+                    </div>
+                    <div class="detail-stats">
+                        <div class="detail-stat occ"><div class="detail-stat-num" id="detailOcc">0</div><div class="detail-stat-label">Occ</div></div>
+                        <div class="detail-stat rdy"><div class="detail-stat-num" id="detailRdy">0</div><div class="detail-stat-label">Ready</div></div>
+                        <div class="detail-stat inp"><div class="detail-stat-num" id="detailInp">0</div><div class="detail-stat-label">Prog</div></div>
+                        <div class="detail-stat dmo"><div class="detail-stat-num" id="detailDmo">0</div><div class="detail-stat-label">Demo</div></div>
+                        <div class="detail-stat vac"><div class="detail-stat-num" id="detailVac">0</div><div class="detail-stat-label">Vac</div></div>
+                    </div>
+                    <div class="detail-units">
+                        <div class="detail-units-title">Units</div>
+                        <div class="unit-grid" id="unitGrid"></div>
+                        <div class="unit-detail" id="unitDetail">
+                            <h4 id="unitTitle">Unit 6309-035</h4>
+                            <p><strong>Status:</strong> <span id="unitStatus">Ready</span></p>
+                            <p><strong>Floor Plan:</strong> <span id="unitPlan">A1C</span></p>
+                            <p><strong>Layout:</strong> <span id="unitLayout">1 Bed / 1 Bath</span></p>
+                            <p><strong>Sq Ft:</strong> <span id="unitSqft">656</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Dashboard Tab -->
+            <div class="tab-content" id="tab-dashboard">
+                <div class="dashboard-content">
+                    <div class="dashboard-grid">
+                        <!-- Occupancy Ring -->
+                        <div class="dashboard-card">
+                            <h3>Occupancy Rate</h3>
+                            <div class="progress-ring">
+                                <div class="ring-container">
+                                    <svg width="140" height="140">
+                                        <defs>
+                                            <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                                <stop offset="0%" style="stop-color:#667eea"/>
+                                                <stop offset="100%" style="stop-color:#764ba2"/>
+                                            </linearGradient>
+                                        </defs>
+                                        <circle class="ring-bg" cx="70" cy="70" r="60"/>
+                                        <circle class="ring-progress" id="occupancyRing" cx="70" cy="70" r="60" 
+                                            stroke-dasharray="377" stroke-dashoffset="268"/>
+                                    </svg>
+                                    <div class="ring-text">
+                                        <div class="ring-value" id="occupancyPercent">29%</div>
+                                        <div class="ring-label">Current</div>
+                                    </div>
+                                </div>
+                                <div class="progress-target">
+                                    <div class="target-value">85%</div>
+                                    <div class="target-label">Target</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Key Metrics -->
+                        <div class="dashboard-card">
+                            <h3>Key Metrics</h3>
+                            <div class="metric-row">
+                                <span class="metric-label">Units Ready to Lease</span>
+                                <span class="metric-value" style="color:var(--info);">54</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Active Construction</span>
+                                <span class="metric-value" style="color:var(--orange);">13</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Demo Complete</span>
+                                <span class="metric-value" style="color:var(--warning);">60</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Velocity (Units/Week)</span>
+                                <span class="metric-value" style="color:var(--success);">8.5</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Est. Time to 85%</span>
+                                <span class="metric-value">32 weeks</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Batch Progress -->
+                        <div class="dashboard-card" style="grid-column: span 2;">
+                            <h3>Batch Progress</h3>
+                            <div class="batch-grid">
+                                <div class="batch-card completed">
+                                    <h4>Batch 1</h4>
+                                    <div class="batch-count">15</div>
+                                    <div class="batch-label">Units • Complete</div>
+                                </div>
+                                <div class="batch-card completed">
+                                    <h4>Batch 2</h4>
+                                    <div class="batch-count">20</div>
+                                    <div class="batch-label">Units • Complete</div>
+                                </div>
+                                <div class="batch-card completed">
+                                    <h4>Batch 3</h4>
+                                    <div class="batch-count">18</div>
+                                    <div class="batch-label">Units • Complete</div>
+                                </div>
+                                <div class="batch-card active">
+                                    <h4>Batch 4</h4>
+                                    <div class="batch-count">13</div>
+                                    <div class="batch-label">Units • Active</div>
+                                </div>
+                                <div class="batch-card">
+                                    <h4>Batch 5</h4>
+                                    <div class="batch-count">25</div>
+                                    <div class="batch-label">Units • Pending</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Units Tab -->
+            <div class="tab-content" id="tab-units">
+                <div class="search-container">
+                    <input type="text" class="search-input" id="unitSearch" placeholder="Search units (e.g., 6337-139)..." oninput="filterUnits()">
+                </div>
+                <div class="filter-row">
+                    <button class="filter-btn active" onclick="setFilter('all')">All</button>
+                    <button class="filter-btn" onclick="setFilter('occupied')">Occupied</button>
+                    <button class="filter-btn" onclick="setFilter('ready')">Ready</button>
+                    <button class="filter-btn" onclick="setFilter('inprogress')">In Progress</button>
+                    <button class="filter-btn" onclick="setFilter('demo')">Demo</button>
+                    <button class="filter-btn" onclick="setFilter('vacant')">Vacant</button>
+                </div>
+                <div class="units-list" id="unitsList">
+                    <!-- Units will be rendered by JS -->
+                </div>
+            </div>
+            
+            <!-- Batches Tab -->
+            <div class="tab-content" id="tab-batches">
+                <div class="dashboard-content">
+                    <div class="dashboard-card">
+                        <h3>Batch 4 - Active (13 Units)</h3>
+                        <div class="units-list" style="max-height:400px; overflow-y:auto;">
+                            <div class="unit-row">
+                                <div class="unit-status-dot status-inp"></div>
+                                <div class="unit-info">
+                                    <div class="unit-name">6337-139</div>
+                                    <div class="unit-meta">Demo • Full Demo & Trash Out</div>
+                                </div>
+                                <div class="unit-badge inprogress">In Progress</div>
+                            </div>
+                            <div class="unit-row">
+                                <div class="unit-status-dot status-inp"></div>
+                                <div class="unit-info">
+                                    <div class="unit-name">6337-141</div>
+                                    <div class="unit-meta">Tier D+ • Heavy Make-Ready</div>
+                                </div>
+                                <div class="unit-badge inprogress">In Progress</div>
+                            </div>
+                            <div class="unit-row">
+                                <div class="unit-status-dot status-inp"></div>
+                                <div class="unit-info">
+                                    <div class="unit-name">6337-143</div>
+                                    <div class="unit-meta">Demo • Full Demo</div>
+                                </div>
+                                <div class="unit-badge inprogress">In Progress</div>
+                            </div>
+                            <div class="unit-row">
+                                <div class="unit-status-dot status-inp"></div>
+                                <div class="unit-info">
+                                    <div class="unit-name">6337-145</div>
+                                    <div class="unit-meta">Demo • Full Demo & Trash Out</div>
+                                </div>
+                                <div class="unit-badge inprogress">In Progress</div>
+                            </div>
+                            <div class="unit-row">
+                                <div class="unit-status-dot status-inp"></div>
+                                <div class="unit-info">
+                                    <div class="unit-name">6337-150</div>
+                                    <div class="unit-meta">Tier D+ • Heavy Mold/Moisture</div>
+                                </div>
+                                <div class="unit-badge inprogress">In Progress</div>
+                            </div>
+                            <div class="unit-row">
+                                <div class="unit-status-dot status-inp"></div>
+                                <div class="unit-info">
+                                    <div class="unit-name">6307-029</div>
+                                    <div class="unit-meta">Demo • Full Demo</div>
+                                </div>
+                                <div class="unit-badge inprogress">In Progress</div>
+                            </div>
+                            <div class="unit-row">
+                                <div class="unit-status-dot status-inp"></div>
+                                <div class="unit-info">
+                                    <div class="unit-name">6321-083</div>
+                                    <div class="unit-meta">Demo • Full Demo</div>
+                                </div>
+                                <div class="unit-badge inprogress">In Progress</div>
+                            </div>
+                            <div class="unit-row">
+                                <div class="unit-status-dot status-inp"></div>
+                                <div class="unit-info">
+                                    <div class="unit-name">6349-189</div>
+                                    <div class="unit-meta">Tier E • Full Demo / Environmental</div>
+                                </div>
+                                <div class="unit-badge inprogress">In Progress</div>
+                            </div>
+                            <div class="unit-row">
+                                <div class="unit-status-dot status-inp"></div>
+                                <div class="unit-info">
+                                    <div class="unit-name">6349-194</div>
+                                    <div class="unit-meta">Tier D • Full Heavy Make-Ready</div>
+                                </div>
+                                <div class="unit-badge inprogress">In Progress</div>
+                            </div>
+                            <div class="unit-row">
+                                <div class="unit-status-dot status-inp"></div>
+                                <div class="unit-info">
+                                    <div class="unit-name">6361-237</div>
+                                    <div class="unit-meta">Tier D+ • Heavy Damage/Water</div>
+                                </div>
+                                <div class="unit-badge inprogress">In Progress</div>
+                            </div>
+                            <div class="unit-row">
+                                <div class="unit-status-dot status-inp"></div>
+                                <div class="unit-info">
+                                    <div class="unit-name">6361-242</div>
+                                    <div class="unit-meta">Tier D • Heavy Turn w/ Ceiling</div>
+                                </div>
+                                <div class="unit-badge inprogress">In Progress</div>
+                            </div>
+                            <div class="unit-row">
+                                <div class="unit-status-dot status-inp"></div>
+                                <div class="unit-info">
+                                    <div class="unit-name">6361-248</div>
+                                    <div class="unit-meta">Demo • Full Demo & Trash Out</div>
+                                </div>
+                                <div class="unit-badge inprogress">In Progress</div>
+                            </div>
+                            <div class="unit-row">
+                                <div class="unit-status-dot status-inp"></div>
+                                <div class="unit-info">
+                                    <div class="unit-name">6379-311</div>
+                                    <div class="unit-meta">Demo+ • Full Demo, Trash Out & Water</div>
+                                </div>
+                                <div class="unit-badge inprogress">In Progress</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Activity Tab -->
+            <div class="tab-content" id="tab-activity">
+                <div class="dashboard-content">
+                    <div class="dashboard-card">
+                        <h3>Recent Activity</h3>
+                        <div class="activity-list" id="activityList">
+                            <div class="activity-item">
+                                <div class="activity-icon">✅</div>
+                                <div class="activity-content">
+                                    <div class="activity-text">Unit 6391-364 marked as <strong>Ready</strong></div>
+                                    <div class="activity-time">2 hours ago</div>
+                                </div>
+                            </div>
+                            <div class="activity-item">
+                                <div class="activity-icon">🔨</div>
+                                <div class="activity-content">
+                                    <div class="activity-text">Batch 4 started - 13 units assigned</div>
+                                    <div class="activity-time">1 day ago</div>
+                                </div>
+                            </div>
+                            <div class="activity-item">
+                                <div class="activity-icon">📋</div>
+                                <div class="activity-content">
+                                    <div class="activity-text">Invoice INV07140 created for Batch 4</div>
+                                    <div class="activity-time">1 day ago</div>
+                                </div>
+                            </div>
+                            <div class="activity-item">
+                                <div class="activity-icon">✅</div>
+                                <div class="activity-content">
+                                    <div class="activity-text">Batch 3 completed - 18 units ready</div>
+                                    <div class="activity-time">3 days ago</div>
+                                </div>
+                            </div>
+                            <div class="activity-item">
+                                <div class="activity-icon">💰</div>
+                                <div class="activity-content">
+                                    <div class="activity-text">Payment received: INV07130 - $24,500</div>
+                                    <div class="activity-time">5 days ago</div>
+                                </div>
+                            </div>
+                            <div class="activity-item">
+                                <div class="activity-icon">🏠</div>
+                                <div class="activity-content">
+                                    <div class="activity-text">Unit 6309-035 tenant moved in</div>
+                                    <div class="activity-time">1 week ago</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- User Menu -->
+        <div class="user-menu" id="userMenu">
+            <div class="user-menu-header">
+                <div class="user-menu-avatar" id="menuAvatar">AE</div>
+                <div class="user-menu-name" id="menuName">Anthony Eubanks</div>
+                <div class="user-menu-email" id="menuEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="80e1e5f5e2e1eeebf3c0e2f2f5f3e8f7eff2f8aee3efed">[email&#160;protected]</a></div>
+            </div>
+            <div class="user-menu-items">
+                <div class="user-menu-item" onclick="showProfile()">
+                    <span>👤</span>
+                    <span>Profile Settings</span>
+                </div>
+                <div class="user-menu-item" onclick="showNotificationSettings()">
+                    <span>🔔</span>
+                    <span>Notifications</span>
+                </div>
+                <div class="user-menu-item" onclick="exportData()">
+                    <span>📊</span>
+                    <span>Export Data</span>
+                </div>
+                <div class="user-menu-item danger" onclick="handleLogout()">
+                    <span>🚪</span>
+                    <span>Sign Out</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+        // ============================================================
+        // FIREBASE CONFIGURATION
+        // ============================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+            authDomain: "alora-tracker.firebaseapp.com",
+            databaseURL: "https://alora-tracker-default-rtdb.firebaseio.com",
+            projectId: "alora-tracker",
+            storageBucket: "alora-tracker.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef123456"
+        };
+        
+        // Initialize Firebase (will use actual config in production)
+        let firebaseInitialized = false;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            firebaseInitialized = true;
+        } catch (e) {
+            console.log('Firebase initialization skipped - demo mode');
+        }
+        
+        // ============================================================
+        // ACCESS CODES
+        // ============================================================
+        const ACCESS_CODES = {
+            'Brushworx': { role: 'admin', company: 'Brushworx LLC' },
+            'brushworx': { role: 'admin', company: 'Brushworx LLC' },
+            'BRUSHWORX': { role: 'admin', company: 'Brushworx LLC' },
+            'Phase1': { role: 'manager', company: 'RPM Living' },
+            'phase1': { role: 'manager', company: 'RPM Living' },
+            'PHASE1': { role: 'manager', company: 'RPM Living' },
+            'Inspector1': { role: 'inspector', company: 'Greyco' },
+            'inspector1': { role: 'inspector', company: 'Greyco' },
+            'Leasing1': { role: 'leasing', company: 'The Alora' },
+            'leasing1': { role: 'leasing', company: 'The Alora' }
+        };
+        
+        const ADMIN_EMAILS = [
+            'aeubanks@brushworx.com',
+            'brushworxok@gmail.com',
+            'just4jordan@yahoo.com',
+            'cm22construction@gmail.com'
+        ];
+        
+        // ============================================================
+        // BUILDING DATA - GPS-accurate coordinates from KML
+        // Property Center: 35.5386582, -97.6257002 (6303 NW 63rd St, OKC)
+        // Updated: March 2026 from Google My Maps KML export
+        // ============================================================
+        const buildings = {
+            // === EAST ZONE (30 buildings) - East of Peniel Rd ===
+            "6301": {x:1175, y:55, w:70, h:35, occ:4, rdy:2, dmo:0, vac:2, total:8, lat:35.5372814, lng:-97.6249296, zone:"east"},
+            "6303": {x:1175, y:120, w:70, h:35, occ:3, rdy:1, dmo:0, vac:4, total:8, lat:35.5372782, lng:-97.6251616, zone:"east"},
+            "6305": {x:1010, y:55, w:70, h:35, occ:1, rdy:0, dmo:1, vac:8, total:10, lat:35.5374975, lng:-97.6249618, zone:"east"},
+            "6307": {x:1010, y:120, w:70, h:35, occ:1, rdy:1, inp:1, dmo:0, vac:5, total:8, lat:35.5377332, lng:-97.6249712, zone:"east"},
+            "6309": {x:845, y:55, w:70, h:35, occ:2, rdy:3, dmo:1, vac:3, total:9, lat:35.5374942, lng:-97.6252689, zone:"east"},
+            "6311": {x:845, y:120, w:70, h:35, occ:4, rdy:2, dmo:2, vac:0, total:8, lat:35.5377201, lng:-97.6252662, zone:"east"},
+            "6313": {x:680, y:55, w:70, h:35, occ:4, rdy:2, dmo:0, vac:2, total:8, lat:35.5379493, lng:-97.6249672, zone:"east"},
+            "6315": {x:680, y:120, w:70, h:35, occ:0, rdy:0, dmo:0, vac:8, total:8, lat:35.5381697, lng:-97.6249739, zone:"east"},
+            "6317": {x:1175, y:175, w:70, h:35, occ:3, rdy:0, dmo:4, vac:1, total:8, lat:35.5381032, lng:-97.6252166, zone:"east"},
+            "6319": {x:1010, y:175, w:70, h:35, occ:2, rdy:0, dmo:0, vac:5, total:7, lat:35.5379231, lng:-97.6253977, zone:"east"},
+            "6321": {x:845, y:175, w:70, h:35, occ:3, rdy:1, inp:1, dmo:0, vac:3, total:8, lat:35.5383640, lng:-97.6249471, zone:"east"},
+            "6323": {x:680, y:175, w:70, h:35, occ:0, rdy:0, dmo:2, vac:6, total:8, lat:35.5383433, lng:-97.6251563, zone:"east"},
+            "6325": {x:1175, y:240, w:70, h:35, occ:0, rdy:0, dmo:5, vac:3, total:8, lat:35.5381425, lng:-97.6254755, zone:"east"},
+            "6327": {x:1010, y:240, w:70, h:35, occ:1, rdy:0, dmo:1, vac:6, total:8, lat:35.5383487, lng:-97.6254755, zone:"east"},
+            "6329": {x:845, y:240, w:70, h:35, occ:2, rdy:2, dmo:0, vac:4, total:8, lat:35.5389143, lng:-97.6249892, zone:"east"},
+            "6331": {x:680, y:240, w:70, h:35, occ:0, rdy:0, dmo:1, vac:7, total:8, lat:35.5389186, lng:-97.6252010, zone:"east"},
+            "6333": {x:1175, y:345, w:70, h:35, occ:1, rdy:2, dmo:1, vac:4, total:8, lat:35.5391161, lng:-97.6249838, zone:"east"},
+            "6335": {x:1010, y:345, w:70, h:35, occ:0, rdy:2, dmo:2, vac:4, total:8, lat:35.5393453, lng:-97.6249865, zone:"east"},
+            "6337": {x:845, y:345, w:70, h:35, occ:1, rdy:0, inp:5, dmo:0, vac:2, total:8, lat:35.5389372, lng:-97.6254599, zone:"east"},
+            "6339": {x:680, y:345, w:70, h:35, occ:2, rdy:0, dmo:0, vac:6, total:8, lat:35.5391151, lng:-97.6254626, zone:"east"},
+            "6341": {x:1175, y:410, w:70, h:35, occ:1, rdy:3, dmo:0, vac:4, total:8, lat:35.5393453, lng:-97.6252601, zone:"east"},
+            "6343": {x:1010, y:410, w:70, h:35, occ:3, rdy:0, dmo:0, vac:5, total:8, lat:35.5393486, lng:-97.6254921, zone:"east"},
+            "6345": {x:845, y:410, w:70, h:35, occ:1, rdy:0, dmo:1, vac:6, total:8, lat:35.5395617, lng:-97.6250039, zone:"east"},
+            "6347": {x:680, y:410, w:70, h:35, occ:1, rdy:0, dmo:0, vac:7, total:8, lat:35.5395540, lng:-97.6254599, zone:"east"},
+            "6349": {x:1175, y:475, w:70, h:35, occ:4, rdy:0, inp:2, dmo:1, vac:1, total:8, lat:35.5398203, lng:-97.6249878, zone:"east"},
+            "6351": {x:1010, y:475, w:70, h:35, occ:1, rdy:1, dmo:0, vac:6, total:8, lat:35.5400473, lng:-97.6249851, zone:"east"},
+            "6353": {x:845, y:475, w:70, h:35, occ:0, rdy:0, dmo:1, vac:7, total:8, lat:35.5397810, lng:-97.6252587, zone:"east"},
+            "6355": {x:680, y:475, w:70, h:35, occ:1, rdy:0, dmo:0, vac:7, total:8, lat:35.5397899, lng:-97.6254709, zone:"east"},
+            "6357": {x:1010, y:585, w:70, h:35, occ:0, rdy:0, dmo:2, vac:6, total:8, lat:35.5402405, lng:-97.6249476, zone:"east"},
+            "6359": {x:845, y:585, w:70, h:35, occ:1, rdy:1, dmo:0, vac:5, total:7, lat:35.5402361, lng:-97.6252185, zone:"east"},
+            
+            // === CENTRAL ZONE (18 buildings) - Around lake/Isola Bella ===
+            "6361": {x:680, y:670, w:55, h:30, occ:2, rdy:1, inp:3, dmo:0, vac:2, total:8, lat:35.5400157, lng:-97.6254773, zone:"central"},
+            "6363": {x:680, y:735, w:55, h:30, occ:5, rdy:1, dmo:0, vac:2, total:8, lat:35.5402099, lng:-97.6254813, zone:"central"},
+            "6365": {x:615, y:800, w:55, h:30, occ:0, rdy:0, dmo:7, vac:1, total:8, lat:35.5403692, lng:-97.6259373, zone:"central"},
+            "6367": {x:615, y:860, w:55, h:30, occ:1, rdy:4, dmo:1, vac:2, total:8, lat:35.5401630, lng:-97.6258622, zone:"central"},
+            "6369": {x:615, y:670, w:55, h:30, occ:0, rdy:0, dmo:3, vac:5, total:8, lat:35.5403669, lng:-97.6261436, zone:"central"},
+            "6371": {x:615, y:735, w:55, h:30, occ:1, rdy:1, dmo:0, vac:6, total:8, lat:35.5398529, lng:-97.6259921, zone:"central"},
+            "6373": {x:615, y:530, w:55, h:30, occ:1, rdy:2, dmo:0, vac:5, total:8, lat:35.5396543, lng:-97.6259773, zone:"central"},
+            "6375": {x:615, y:600, w:55, h:30, occ:1, rdy:0, dmo:2, vac:6, total:9, lat:35.5394049, lng:-97.6260344, zone:"central"},
+            "6377": {x:680, y:800, w:55, h:30, occ:3, rdy:1, dmo:2, vac:2, total:8, lat:35.5391986, lng:-97.6260948, zone:"central"},
+            "6379": {x:680, y:860, w:55, h:30, occ:0, rdy:2, inp:1, dmo:0, vac:5, total:8, lat:35.5391266, lng:-97.6258748, zone:"central"},
+            "6381": {x:745, y:670, w:55, h:30, occ:0, rdy:1, dmo:1, vac:6, total:8, lat:35.5389171, lng:-97.6259365, zone:"central"},
+            "6383": {x:680, y:530, w:55, h:30, occ:3, rdy:1, dmo:0, vac:4, total:8, lat:35.5386556, lng:-97.6259419, zone:"central"},
+            "6385": {x:680, y:600, w:55, h:30, occ:3, rdy:0, dmo:3, vac:3, total:9, lat:35.5384406, lng:-97.6259432, zone:"central"},
+            "6387": {x:745, y:735, w:55, h:30, occ:0, rdy:0, dmo:8, vac:0, total:8, lat:35.5381650, lng:-97.6260867, zone:"central"},
+            "6389": {x:745, y:800, w:55, h:30, occ:1, rdy:2, dmo:0, vac:5, total:8, lat:35.5379664, lng:-97.6259580, zone:"central"},
+            "6391": {x:745, y:860, w:55, h:30, occ:2, rdy:4, dmo:1, vac:2, total:9, lat:35.5378572, lng:-97.6258507, zone:"central"},
+            "6393": {x:810, y:735, w:55, h:30, occ:1, rdy:0, dmo:2, vac:6, total:9, lat:35.5375277, lng:-97.6256388, zone:"central"},
+            "6395": {x:810, y:800, w:55, h:30, occ:5, rdy:1, dmo:0, vac:2, total:8, lat:35.5373159, lng:-97.6256442, zone:"central"},
+            
+            // === WEST ZONE (11 buildings) - West of Peniel Rd ===
+            "6404": {x:100, y:615, w:55, h:30, occ:2, rdy:0, dmo:0, vac:6, total:8, lat:35.5372431, lng:-97.6261461, zone:"west"},
+            "6408": {x:100, y:670, w:55, h:30, occ:0, rdy:0, dmo:0, vac:8, total:8, lat:35.5374483, lng:-97.6261488, zone:"west"},
+            "6412": {x:100, y:725, w:55, h:30, occ:0, rdy:1, dmo:2, vac:5, total:8, lat:35.5375181, lng:-97.6264251, zone:"west"},
+            "6416": {x:100, y:780, w:55, h:30, occ:2, rdy:1, dmo:0, vac:5, total:8, lat:35.5376229, lng:-97.6267094, zone:"west"},
+            "6420": {x:190, y:615, w:55, h:30, occ:1, rdy:2, dmo:0, vac:4, total:7, lat:35.5376316, lng:-97.6269562, zone:"west"},
+            "6424": {x:190, y:670, w:55, h:30, occ:0, rdy:0, dmo:0, vac:8, total:8, lat:35.5378398, lng:-97.6268243, zone:"west"},
+            "6428": {x:190, y:725, w:55, h:30, occ:5, rdy:0, dmo:0, vac:3, total:8, lat:35.5376273, lng:-97.6273397, zone:"west"},
+            "6432": {x:190, y:780, w:55, h:30, occ:0, rdy:0, dmo:0, vac:8, total:8, lat:35.5378193, lng:-97.6272271, zone:"west"},
+            "6436": {x:280, y:615, w:55, h:30, occ:2, rdy:2, dmo:0, vac:4, total:8, lat:35.5380136, lng:-97.6271439, zone:"west"},
+            "6440": {x:280, y:670, w:55, h:30, occ:1, rdy:3, dmo:0, vac:4, total:8, lat:35.5381672, lng:-97.6269398, zone:"west"},
+            "6444": {x:280, y:725, w:55, h:30, occ:3, rdy:0, dmo:0, vac:5, total:8, lat:35.5382777, lng:-97.6272378, zone:"west"}
+        };
+        
+        // Unit data for key buildings
+        const unitData = {
+            "6337": [
+                {num:"139", status:"inprogress", plan:"A1C", layout:"1x1", sqft:656},
+                {num:"141", status:"inprogress", plan:"A1C", layout:"1x1", sqft:656},
+                {num:"143", status:"inprogress", plan:"A1C", layout:"1x1", sqft:656},
+                {num:"145", status:"inprogress", plan:"A1C", layout:"1x1", sqft:656},
+                {num:"147", status:"occupied", plan:"A1C", layout:"1x1", sqft:656},
+                {num:"150", status:"inprogress", plan:"A1C", layout:"1x1", sqft:656},
+                {num:"152", status:"vacant", plan:"A1C", layout:"1x1", sqft:656},
+                {num:"154", status:"vacant", plan:"A1C", layout:"1x1", sqft:656}
+            ],
+            "6309": [
+                {num:"031", status:"vacant", plan:"A1C", layout:"1x1", sqft:656},
+                {num:"032", status:"vacant", plan:"A1C", layout:"1x1", sqft:656},
+                {num:"033", status:"vacant", plan:"A1C", layout:"1x1", sqft:656},
+                {num:"034", status:"ready", plan:"A1C", layout:"1x1", sqft:656},
+                {num:"035", status:"ready", plan:"A1C", layout:"1x1", sqft:656},
+                {num:"036", status:"occupied", plan:"A1C", layout:"1x1", sqft:656},
+                {num:"037", status:"occupied", plan:"A1C", layout:"1x1", sqft:656},
+                {num:"038", status:"demo", plan:"A1C", layout:"1x1", sqft:656},
+                {num:"040", status:"ready", plan:"A1C", layout:"1x1", sqft:656}
+            ]
+        };
+        
+        // ============================================================
+        // APP STATE
+        // ============================================================
+        let currentUser = null;
+        let currentMapView = 'blueprint';
+        let currentFilter = 'all';
+        let selectedBuilding = null;
+        let leafletMap = null;
+        let mapMarkers = [];
+        
+        // ============================================================
+        // AUTHENTICATION
+        // ============================================================
+        function switchLoginTab(tab) {
+            document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.login-form').forEach(f => f.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tab === 'access' ? 'accessCodeForm' : 'emailLoginForm').classList.add('active');
+            hideLoginError();
+        }
+        
+        function showLoginError(message) {
+            const errorEl = document.getElementById('loginError');
+            errorEl.textContent = message;
+            errorEl.classList.add('show');
+        }
+        
+        function hideLoginError() {
+            document.getElementById('loginError').classList.remove('show');
+        }
+        
+        function handleAccessCode(e) {
+            e.preventDefault();
+            const code = document.getElementById('accessCode').value.trim();
+            
+            if (ACCESS_CODES[code]) {
+                const accessData = ACCESS_CODES[code];
+                currentUser = {
+                    email: 'demo@' + accessData.company.toLowerCase().replace(/\s+/g, '') + '.com',
+                    name: accessData.company + ' User',
+                    role: accessData.role,
+                    company: accessData.company
+                };
+                loginSuccess();
+            } else {
+                showLoginError('Invalid access code. Please try again.');
+            }
+        }
+        
+        async function handleEmailLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            
+            if (!email || !password) {
+                showLoginError('Please enter both email and password.');
+                return;
+            }
+            
+            // Demo mode - accept any email/password
+            const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
+            currentUser = {
+                email: email,
+                name: email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                role: isAdmin ? 'admin' : 'user',
+                company: isAdmin ? 'Brushworx LLC' : 'Guest'
+            };
+            loginSuccess();
+        }
+        
+        function handleGoogleLogin() {
+            // Demo - simulate Google login
+            currentUser = {
+                email: 'demo@gmail.com',
+                name: 'Demo User',
+                role: 'user',
+                company: 'Guest'
+            };
+            loginSuccess();
+        }
+        
+        function handleAppleLogin() {
+            showToast('Apple Sign-In coming soon', 'info');
+        }
+        
+        function loginSuccess() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('appContainer').classList.add('active');
+            
+            // Update user UI
+            const initials = currentUser.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+            document.getElementById('userAvatar').textContent = initials;
+            document.getElementById('menuAvatar').textContent = initials;
+            document.getElementById('menuName').textContent = currentUser.name;
+            document.getElementById('menuEmail').textContent = currentUser.email;
+            
+            // Initialize app
+            renderMap();
+            renderUnitsList();
+            updateStats();
+            
+            showToast('Welcome to Alora Tracker!', 'success');
+            
+            // Save session
+            localStorage.setItem('aloraUser', JSON.stringify(currentUser));
+        }
+        
+        function handleLogout() {
+            localStorage.removeItem('aloraUser');
+            currentUser = null;
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('appContainer').classList.remove('active');
+            document.getElementById('userMenu').classList.remove('active');
+            
+            // Clear forms
+            document.getElementById('accessCode').value = '';
+            document.getElementById('loginEmail').value = '';
+            document.getElementById('loginPassword').value = '';
+        }
+        
+        // Check for existing session
+        function checkSession() {
+            const saved = localStorage.getItem('aloraUser');
+            if (saved) {
+                try {
+                    currentUser = JSON.parse(saved);
+                    loginSuccess();
+                } catch (e) {
+                    localStorage.removeItem('aloraUser');
+                }
+            }
+        }
+        
+        // ============================================================
+        // MAP RENDERING
+        // ============================================================
+        function renderMap() {
+            const wrapper = document.getElementById('mapWrapper');
+            
+            // Clear existing buildings
+            wrapper.querySelectorAll('.building').forEach(b => b.remove());
+            
+            for (const [id, b] of Object.entries(buildings)) {
+                const el = document.createElement('div');
+                el.className = 'building' + (b.inp ? ' has-inprogress' : '');
+                el.style.cssText = `left:${b.x}px; top:${b.y}px; width:${b.w}px; height:${b.h}px;`;
+                el.dataset.id = id;
+                el.onclick = () => selectBuilding(id);
+                
+                // Building number
+                const numEl = document.createElement('div');
+                numEl.className = 'b-num';
+                numEl.textContent = id;
+                el.appendChild(numEl);
+                
+                // Mini status bar
+                const barEl = document.createElement('div');
+                barEl.className = 'b-mini-bar';
+                
+                const total = b.total;
+                if (b.occ) barEl.innerHTML += `<div class="status-occ" style="width:${(b.occ/total)*100}%"></div>`;
+                if (b.rdy) barEl.innerHTML += `<div class="status-rdy" style="width:${(b.rdy/total)*100}%"></div>`;
+                if (b.inp) barEl.innerHTML += `<div class="status-inp" style="width:${(b.inp/total)*100}%"></div>`;
+                if (b.dmo) barEl.innerHTML += `<div class="status-dmo" style="width:${(b.dmo/total)*100}%"></div>`;
+                if (b.vac) barEl.innerHTML += `<div class="status-vac" style="width:${(b.vac/total)*100}%"></div>`;
+                
+                el.appendChild(barEl);
+                wrapper.appendChild(el);
+            }
+        }
+        
+        function selectBuilding(id) {
+            // Update selection
+            document.querySelectorAll('.building').forEach(b => b.classList.remove('selected'));
+            document.querySelector(`.building[data-id="${id}"]`)?.classList.add('selected');
+            
+            selectedBuilding = id;
+            const b = buildings[id];
+            
+            // Update detail panel
+            document.getElementById('detailTitle').textContent = `Building ${id}`;
+            document.getElementById('detailOcc').textContent = b.occ || 0;
+            document.getElementById('detailRdy').textContent = b.rdy || 0;
+            document.getElementById('detailInp').textContent = b.inp || 0;
+            document.getElementById('detailDmo').textContent = b.dmo || 0;
+            document.getElementById('detailVac').textContent = b.vac || 0;
+            
+            // Render units
+            const unitGrid = document.getElementById('unitGrid');
+            unitGrid.innerHTML = '';
+            
+            const units = unitData[id] || generateUnitsForBuilding(b);
+            units.forEach(u => {
+                const unitEl = document.createElement('div');
+                unitEl.className = `unit ${u.status}`;
+                unitEl.textContent = u.num;
+                unitEl.onclick = (e) => {
+                    e.stopPropagation();
+                    showUnitDetail(id, u);
+                };
+                unitGrid.appendChild(unitEl);
+            });
+            
+            document.getElementById('unitDetail').classList.remove('active');
+            document.getElementById('detailPanel').classList.add('active');
+        }
+        
+        function generateUnitsForBuilding(b) {
+            // Generate placeholder units based on building stats
+            const units = [];
+            let unitNum = 1;
+            
+            for (let i = 0; i < (b.occ || 0); i++) {
+                units.push({num: String(unitNum++).padStart(3, '0'), status: 'occupied', plan: 'A1C', layout: '1x1', sqft: 656});
+            }
+            for (let i = 0; i < (b.rdy || 0); i++) {
+                units.push({num: String(unitNum++).padStart(3, '0'), status: 'ready', plan: 'A1C', layout: '1x1', sqft: 656});
+            }
+            for (let i = 0; i < (b.inp || 0); i++) {
+                units.push({num: String(unitNum++).padStart(3, '0'), status: 'inprogress', plan: 'A1C', layout: '1x1', sqft: 656});
+            }
+            for (let i = 0; i < (b.dmo || 0); i++) {
+                units.push({num: String(unitNum++).padStart(3, '0'), status: 'demo', plan: 'A1C', layout: '1x1', sqft: 656});
+            }
+            for (let i = 0; i < (b.vac || 0); i++) {
+                units.push({num: String(unitNum++).padStart(3, '0'), status: 'vacant', plan: 'A1C', layout: '1x1', sqft: 656});
+            }
+            
+            return units;
+        }
+        
+        function showUnitDetail(buildingId, unit) {
+            document.getElementById('unitTitle').textContent = `Unit ${buildingId}-${unit.num}`;
+            document.getElementById('unitStatus').textContent = unit.status.charAt(0).toUpperCase() + unit.status.slice(1);
+            document.getElementById('unitPlan').textContent = unit.plan || 'N/A';
+            document.getElementById('unitLayout').textContent = unit.layout === '1x1' ? '1 Bed / 1 Bath' : '2 Bed / 1 Bath';
+            document.getElementById('unitSqft').textContent = unit.sqft || '656';
+            document.getElementById('unitDetail').classList.add('active');
+        }
+        
+        function closeDetail() {
+            document.getElementById('detailPanel').classList.remove('active');
+            document.querySelectorAll('.building').forEach(b => b.classList.remove('selected'));
+            selectedBuilding = null;
+        }
+        
+        // ============================================================
+        // MAP VIEW SWITCHING
+        // ============================================================
+        function switchMapView(view) {
+            currentMapView = view;
+            
+            // Update buttons
+            document.querySelectorAll('.map-view-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            const blueprintMap = document.getElementById('blueprintMap');
+            const googleMapEl = document.getElementById('googleMap');
+            
+            if (view === 'blueprint') {
+                blueprintMap.style.display = 'block';
+                googleMapEl.style.display = 'none';
+            } else {
+                blueprintMap.style.display = 'none';
+                googleMapEl.style.display = 'block';
+                initGoogleMap(view === '3d');
+            }
+        }
+        
+        function initGoogleMap(is3D) {
+            // Initialize Leaflet Map (FREE - no API key needed!)
+            const center = [35.5386582, -97.6257002];
+            const mapEl = document.getElementById('googleMap');
+            
+            // Clear previous content
+            mapEl.innerHTML = '';
+            
+            if (!leafletMap) {
+                // Create Leaflet map
+                leafletMap = L.map('googleMap', {
+                    center: center,
+                    zoom: 17,
+                    maxZoom: 19,
+                    minZoom: 15,
+                    zoomControl: false
+                });
+                
+                // Add zoom control to top-right
+                L.control.zoom({ position: 'topright' }).addTo(leafletMap);
+            }
+            
+            // Clear existing layers
+            leafletMap.eachLayer(layer => {
+                if (layer instanceof L.TileLayer || layer instanceof L.Marker) {
+                    leafletMap.removeLayer(layer);
+                }
+            });
+            
+            // Add tile layer based on view mode
+            if (is3D) {
+                // Satellite view (ESRI - FREE)
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'ESRI Satellite'
+                }).addTo(leafletMap);
+            } else {
+                // Satellite view (ESRI - FREE)
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'ESRI Satellite'
+                }).addTo(leafletMap);
+            }
+            
+            // Add building markers
+            addBuildingMarkers();
+            
+            // Force map resize
+            setTimeout(() => leafletMap.invalidateSize(), 100);
+        }
+        
+        // Zone colors
+        const ZONE_COLORS = {
+            east: '#ef4444',
+            central: '#3b82f6', 
+            west: '#22c55e'
+        };
+        
+        function addBuildingMarkers() {
+            if (!leafletMap) return;
+            
+            // Clear existing markers
+            mapMarkers.forEach(m => leafletMap.removeLayer(m));
+            mapMarkers = [];
+            
+            for (const [id, b] of Object.entries(buildings)) {
+                if (b.lat && b.lng) {
+                    const zone = b.zone || 'east';
+                    const color = ZONE_COLORS[zone];
+                    
+                    // Create custom icon
+                    const icon = L.divIcon({
+                        className: 'building-marker',
+                        html: `<div style="
+                            width: 28px;
+                            height: 28px;
+                            background: ${color};
+                            border: 2px solid white;
+                            border-radius: 50%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 9px;
+                            font-weight: bold;
+                            color: white;
+                            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+                            cursor: pointer;
+                            font-family: 'Inter', sans-serif;
+                        ">${id.slice(-2)}</div>`,
+                        iconSize: [28, 28],
+                        iconAnchor: [14, 14],
+                        popupAnchor: [0, -14]
+                    });
+                    
+                    const marker = L.marker([b.lat, b.lng], { icon: icon })
+                        .addTo(leafletMap);
+                    
+                    // Create popup content
+                    const popupContent = `
+                        <div style="font-family: 'Inter', sans-serif; min-width: 160px;">
+                            <div style="font-weight: bold; font-size: 15px; margin-bottom: 8px;">Building ${id}</div>
+                            <div style="font-size: 12px; color: #666; margin-bottom: 6px;">
+                                <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${color}; margin-right: 6px;"></span>
+                                ${zone.charAt(0).toUpperCase() + zone.slice(1)} Zone
+                            </div>
+                            <div style="font-size: 12px; margin-bottom: 4px;"><strong>Units:</strong> ${b.total || 8}</div>
+                            <div style="font-size: 11px; margin-top: 6px; padding-top: 6px; border-top: 1px solid #eee;">
+                                ${b.occ ? `✅ Occupied: ${b.occ}` : ''} 
+                                ${b.rdy ? `| ✓ Ready: ${b.rdy}` : ''}
+                                ${b.dmo ? `| 🔴 Demo: ${b.dmo}` : ''}
+                            </div>
+                            <div style="font-size: 10px; color: #999; margin-top: 6px;">
+                                ${b.lat.toFixed(6)}, ${b.lng.toFixed(6)}
+                            </div>
+                        </div>
+                    `;
+                    
+                    marker.bindPopup(popupContent);
+                    marker.on('click', () => selectBuilding(id));
+                    mapMarkers.push(marker);
+                }
+            }
+            
+            // Add legend
+            addMapLegend();
+        }
+        
+        function addMapLegend() {
+            // Remove existing legend
+            const existingLegend = document.querySelector('.map-legend');
+            if (existingLegend) existingLegend.remove();
+            
+            const legend = L.control({ position: 'bottomleft' });
+            legend.onAdd = function() {
+                const div = L.DomUtil.create('div', 'map-legend');
+                div.innerHTML = `
+                    <div style="
+                        background: rgba(0,0,0,0.85);
+                        color: white;
+                        padding: 10px 14px;
+                        border-radius: 10px;
+                        font-family: 'Inter', sans-serif;
+                        font-size: 11px;
+                        backdrop-filter: blur(10px);
+                    ">
+                        <div style="font-weight: bold; margin-bottom: 8px;">Building Zones</div>
+                        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                            <div style="width: 12px; height: 12px; border-radius: 50%; background: #ef4444; border: 2px solid white;"></div>
+                            <span>East (30)</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                            <div style="width: 12px; height: 12px; border-radius: 50%; background: #3b82f6; border: 2px solid white;"></div>
+                            <span>Central (18)</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <div style="width: 12px; height: 12px; border-radius: 50%; background: #22c55e; border: 2px solid white;"></div>
+                            <span>West (11)</span>
+                        </div>
+                        <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid #444; font-size: 10px; color: #888;">
+                            ✓ FREE - No API Key
+                        </div>
+                    </div>
+                `;
+                return div;
+            };
+            legend.addTo(leafletMap);
+        }
+        
+        // ============================================================
+        // TABS
+        // ============================================================
+        function switchTab(tab) {
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(`tab-${tab}`).classList.add('active');
+            
+            closeDetail();
+        }
+        
+        // ============================================================
+        // UNITS LIST
+        // ============================================================
+        function renderUnitsList() {
+            const container = document.getElementById('unitsList');
+            container.innerHTML = '';
+            
+            const allUnits = [];
+            for (const [buildingId, b] of Object.entries(buildings)) {
+                const units = unitData[buildingId] || generateUnitsForBuilding(b);
+                units.forEach(u => {
+                    allUnits.push({
+                        ...u,
+                        buildingId,
+                        fullId: `${buildingId}-${u.num}`
+                    });
+                });
+            }
+            
+            // Filter
+            let filtered = allUnits;
+            if (currentFilter !== 'all') {
+                filtered = allUnits.filter(u => u.status === currentFilter);
+            }
+            
+            // Search
+            const search = document.getElementById('unitSearch')?.value.toLowerCase() || '';
+            if (search) {
+                filtered = filtered.filter(u => u.fullId.toLowerCase().includes(search));
+            }
+            
+            // Group by building
+            const grouped = {};
+            filtered.forEach(u => {
+                if (!grouped[u.buildingId]) grouped[u.buildingId] = [];
+                grouped[u.buildingId].push(u);
+            });
+            
+            // Render
+            for (const [buildingId, units] of Object.entries(grouped)) {
+                const section = document.createElement('div');
+                section.className = 'units-section';
+                section.innerHTML = `<div class="units-section-title">Building ${buildingId} (${units.length} units)</div>`;
+                
+                units.forEach(u => {
+                    const row = document.createElement('div');
+                    row.className = 'unit-row';
+                    row.innerHTML = `
+                        <div class="unit-status-dot status-${u.status.slice(0, 3)}"></div>
+                        <div class="unit-info">
+                            <div class="unit-name">${u.fullId}</div>
+                            <div class="unit-meta">${u.plan || 'A1C'} • ${u.layout === '1x1' ? '1 Bed/1 Bath' : '2 Bed/1 Bath'} • ${u.sqft || 656} sqft</div>
+                        </div>
+                        <div class="unit-badge ${u.status}">${u.status.charAt(0).toUpperCase() + u.status.slice(1)}</div>
+                    `;
+                    row.onclick = () => {
+                        switchTab('map');
+                        document.querySelector('.nav-tab').click();
+                        setTimeout(() => selectBuilding(u.buildingId), 100);
+                    };
+                    section.appendChild(row);
+                });
+                
+                container.appendChild(section);
+            }
+            
+            if (Object.keys(grouped).length === 0) {
+                container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-secondary);">No units found</div>`;
+            }
+        }
+        
+        function setFilter(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            renderUnitsList();
+        }
+        
+        function filterUnits() {
+            renderUnitsList();
+        }
+        
+        // ============================================================
+        // STATS
+        // ============================================================
+        function updateStats() {
+            let total = 0, occ = 0, rdy = 0, inp = 0, dmo = 0, vac = 0;
+            
+            for (const b of Object.values(buildings)) {
+                total += b.total || 0;
+                occ += b.occ || 0;
+                rdy += b.rdy || 0;
+                inp += b.inp || 0;
+                dmo += b.dmo || 0;
+                vac += b.vac || 0;
+            }
+            
+            document.getElementById('totalUnits').textContent = total;
+            document.getElementById('occUnits').textContent = occ;
+            document.getElementById('rdyUnits').textContent = rdy;
+            document.getElementById('inpUnits').textContent = inp;
+            document.getElementById('dmoUnits').textContent = dmo;
+            document.getElementById('vacUnits').textContent = vac;
+            
+            // Update occupancy ring
+            const percent = Math.round((occ / total) * 100);
+            document.getElementById('occupancyPercent').textContent = percent + '%';
+            
+            const circumference = 2 * Math.PI * 60;
+            const offset = circumference - (percent / 100) * circumference;
+            document.getElementById('occupancyRing').style.strokeDashoffset = offset;
+        }
+        
+        // ============================================================
+        // UI HELPERS
+        // ============================================================
+        function toggleUserMenu() {
+            document.getElementById('userMenu').classList.toggle('active');
+        }
+        
+        function toggleNotifications() {
+            showToast('No new notifications', 'info');
+        }
+        
+        function refreshData() {
+            showToast('Data refreshed', 'success');
+            updateStats();
+            renderUnitsList();
+        }
+        
+        function showProfile() {
+            document.getElementById('userMenu').classList.remove('active');
+            showToast('Profile settings coming soon', 'info');
+        }
+        
+        function showNotificationSettings() {
+            document.getElementById('userMenu').classList.remove('active');
+            showToast('Notification settings coming soon', 'info');
+        }
+        
+        function exportData() {
+            document.getElementById('userMenu').classList.remove('active');
+            showToast('Generating report...', 'info');
+            
+            setTimeout(() => {
+                showToast('Report ready for download', 'success');
+            }, 1500);
+        }
+        
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+            toast.innerHTML = `
+                <span class="toast-icon">${icons[type] || 'ℹ️'}</span>
+                <span class="toast-message">${message}</span>
+            `;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+        
+        // Close menus when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#userAvatar') && !e.target.closest('#userMenu')) {
+                document.getElementById('userMenu').classList.remove('active');
+            }
+        });
+        
+        // ============================================================
+        // INITIALIZATION
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', () => {
+            checkSession();
+        });
+        
+        // Service Worker Registrati
